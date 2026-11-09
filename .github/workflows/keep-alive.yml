@@ -1,0 +1,30 @@
+# Keeps the free Supabase project from being paused for inactivity
+# (Supabase pauses free projects after 7 days without activity).
+# Every 3 days it calls one tiny database function as an anonymous visitor.
+# It returns nothing to anonymous callers, so no data is read or exposed.
+name: Keep Supabase awake
+
+on:
+  schedule:
+    - cron: "17 16 */3 * *" # every 3 days, 16:17 UTC
+  workflow_dispatch: # "Run workflow" button in the Actions tab
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping the database
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          curl -fsS --retry 3 --retry-delay 10 -X POST "$SUPABASE_URL/rest/v1/rpc/pilot_stats" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{}'
+          echo
+          echo "Supabase responded. Project stays active."
